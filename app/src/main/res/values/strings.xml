@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">RxJavaDemo</string>
+    <string name="common_emitter_observer">common_emitter_observer</string>
+    <string name="common_emitter_consumer">common_emitter_consumer</string>
+    <string name="common_emitter_synchronized">common_emitter_asychronized</string>
+    <string name="common_emitter_asynchronization">emitter_asynchronization</string>
+    <string name="flowable_emitter">flowable_emitter</string>
+    <string name="flowable_emitter_request">request</string>
+    <string name="emitter_zip">emitter_zip</string>
+</resources>
