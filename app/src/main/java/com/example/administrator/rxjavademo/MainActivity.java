@@ -14,6 +14,9 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.BackpressureStrategy;
@@ -25,8 +28,10 @@ import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
+import io.reactivex.Scheduler;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
 import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
@@ -40,6 +45,93 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+    }
+
+
+    public void sleep(int time) {
+        try {
+            Thread.sleep(time);
+        } catch (InterruptedException e) {
+            println("JG  InterruptedException");
+
+            e.printStackTrace();
+        }
+    }
+
+    public void println(Object obj) {
+        System.out.println(obj);
+    }
+
+
+    public void test() {
+
+
+        //Future
+        Future<String> futrue = Executors.newSingleThreadExecutor().submit(new Callable<String>() {
+
+            @Override
+            public String call() throws Exception {
+                Thread.sleep(1000);
+                return "maplejaw";
+            }
+        });
+
+        Observable.fromFuture(futrue)
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) throws Exception {
+
+                    }
+                });
+
+
+        Observable<String> defer = Observable.defer(new Callable<ObservableSource<String>>() {
+            @Override
+            public ObservableSource<String> call() throws Exception {
+                return Observable.just("");
+            }
+        });
+
+
+        Flowable.create(new FlowableOnSubscribe<String>() {
+            @Override
+            public void subscribe(FlowableEmitter<String> e) throws Exception {
+
+            }
+        }, BackpressureStrategy.ERROR).doOnCancel(new Action() {
+            @Override
+            public void run() throws Exception {
+
+            }
+        })
+                .unsubscribeOn(Schedulers.newThread())
+                .doOnCancel(new Action() {
+                    @Override
+                    public void run() throws Exception {
+
+                    }
+                })
+                .subscribe(new Subscriber<String>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+
+                    }
+
+                    @Override
+                    public void onNext(String s) {
+
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
     }
 
     /**
@@ -148,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
 //                        return String.valueOf(integer * 100);
 //                    }
 //                })
-                .concatMap(new Function<Integer, ObservableSource<String>>() {
+                .flatMap(new Function<Integer, ObservableSource<String>>() {
                     @Override
                     public ObservableSource<String> apply(Integer s) throws Exception {
 //                return Observable.create(new ObservableOnSubscribe<String>() {
@@ -336,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
      * 1.使用new BufferedReader(new InputStreamReader(open)) 可以将字节流转换成文本流
      * 2.e.onComplete只有在缓存池中的所有事件都发送完之后，才会触发下游的onComplete
      * <p>
-     *
+     * <p>
      * 疑问点：assets目录下对于txt文件，在打包成apk的时候，会进行压缩，无法读取，报
      * java.io.FileNotFoundException This file can not be opened as a file descriptor; it is probably compressed
      * 有两种解决办法：
@@ -432,4 +524,52 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public void retryWhen(View view) {
+        Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                e.onNext(1);
+                e.onNext(2);
+                e.onNext(3);
+                e.onError(new Throwable("123"));
+            }
+        }).retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
+            @Override
+            public ObservableSource<?> apply(Observable<Throwable> throwableObservable) throws Exception {
+                //为什么这么返回，会进行重试呢？
+//                return throwableObservable;
+                //目前只能是这种形式
+                return throwableObservable.flatMap(new Function<Throwable, ObservableSource<?>>() {
+                    @Override
+                    public ObservableSource<?> apply(Throwable throwable) throws Exception {
+                        //返回error、complete表示不重试，其他任何值表示重试
+//                        return Observable.error(throwable);
+//                        return Observable.just(true);
+                        //设置闹钟，每个指定时间，进行重试
+                        return Observable.timer(2000,TimeUnit.MILLISECONDS);
+                    }
+                });
+            }
+        }).subscribe(new Observer<Integer>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(Integer value) {
+                Log.i(TAG, value + "");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.i(TAG, e + "");
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        });
+    }
 }
