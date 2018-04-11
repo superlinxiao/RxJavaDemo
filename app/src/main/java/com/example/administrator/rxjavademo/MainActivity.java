@@ -221,11 +221,12 @@ public class MainActivity extends AppCompatActivity {
                 e.onNext(3);
                 e.onNext(4);
                 e.onNext(5);
+
 //                Log.e(TAG, "subscribe: " + " currentThread :" + Thread.currentThread().getName());
             }
         })
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.newThread())
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.newThread())
                 .doOnNext(new Consumer<Integer>() {
                     @Override
                     public void accept(Integer integer) throws Exception {
@@ -260,6 +261,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void accept(String string) throws Exception {
                 Log.e(TAG, "subscribe accept: " + string + " currentThread :" + Thread.currentThread().getName());
+            }
+        }, new Consumer<Throwable>() {
+            @Override
+            public void accept(Throwable throwable) throws Exception {
+                Log.i(TAG,throwable.toString());
             }
         });
 
@@ -531,45 +537,111 @@ public class MainActivity extends AppCompatActivity {
                 e.onNext(1);
                 e.onNext(2);
                 e.onNext(3);
-                e.onError(new Throwable("123"));
+//                e.onComplete();
+//                e.onError(new Exception("123"));
+                throw new Exception("error");
             }
-        }).retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
-            @Override
-            public ObservableSource<?> apply(Observable<Throwable> throwableObservable) throws Exception {
-                //为什么这么返回，会进行重试呢？
-//                return throwableObservable;
-                //目前只能是这种形式
-                return throwableObservable.flatMap(new Function<Throwable, ObservableSource<?>>() {
+        })
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(Schedulers.newThread())
+//                .retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
+//                    @Override
+//                    public ObservableSource<?> apply(Observable<Throwable> throwableObservable) throws Exception {
+//                        //为什么这么返回，会进行重试呢？
+////                return throwableObservable;
+//                        //目前只能是这种形式
+//                        return throwableObservable
+//                                .observeOn(AndroidSchedulers.mainThread())
+//                                .flatMap(new Function<Throwable, ObservableSource<?>>() {
+//                            @Override
+//                            public ObservableSource<?> apply(Throwable throwable) throws Exception {
+//
+//                                Log.i(TAG, "retryWhen  " + Thread.currentThread().getName());
+//                                //返回error、complete表示不重试，其他任何值表示重试
+////                                return Observable.error(throwable);
+////                                return Observable.just(true);
+//                                //设置闹钟，每个指定时间，进行重试
+//                                return Observable.timer(10000, TimeUnit.MILLISECONDS);
+//                            }
+//                        });
+//                    }
+//                })
+//                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<Integer>() {
                     @Override
-                    public ObservableSource<?> apply(Throwable throwable) throws Exception {
-                        //返回error、complete表示不重试，其他任何值表示重试
-//                        return Observable.error(throwable);
-//                        return Observable.just(true);
-                        //设置闹钟，每个指定时间，进行重试
-                        return Observable.timer(2000,TimeUnit.MILLISECONDS);
+                    public void onSubscribe(Disposable d) {
+                        Log.i(TAG, " onSubscribe  " + Thread.currentThread().getName());
+
+                    }
+
+                    @Override
+                    public void onNext(Integer value) {
+                        Log.i(TAG, value + " " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i(TAG, e + "   " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.i(TAG, "   onComplete " + Thread.currentThread().getName());
+
                     }
                 });
-            }
-        }).subscribe(new Observer<Integer>() {
-            @Override
-            public void onSubscribe(Disposable d) {
-
-            }
-
-            @Override
-            public void onNext(Integer value) {
-                Log.i(TAG, value + "");
-            }
-
-            @Override
-            public void onError(Throwable e) {
-                Log.i(TAG, e + "");
-            }
-
-            @Override
-            public void onComplete() {
-
-            }
-        });
     }
+
+
+    /**
+     * 结论：
+     * 当subscribe和observer不在同一个线程的时候，如果subscribe线程发出了一个error事件或者
+     * 抛出了一个请求，那么observer中将只会收到部分事件，直到error事件。
+     *
+     * @param view
+     */
+    public void emitterErrorTest(View view) {
+        Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                e.onNext(1);
+                e.onNext(2);
+                e.onNext(3);
+//                e.onComplete();
+//                e.onError(new Exception("123"));
+
+                for (int i = 0; i < 10000; i++) {
+                    e.onNext(i);
+                }
+
+                throw new Exception("error");
+            }
+        })
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(Schedulers.newThread())
+                .subscribe(new Observer<Integer>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        Log.i(TAG, " onSubscribe  " + Thread.currentThread().getName());
+
+                    }
+
+                    @Override
+                    public void onNext(Integer value) {
+                        Log.i(TAG, value + " " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i(TAG, e + "   " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.i(TAG, "   onComplete " + Thread.currentThread().getName());
+
+                    }
+                });
+    }
+
 }
