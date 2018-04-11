@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
         }, new Consumer<Throwable>() {
             @Override
             public void accept(Throwable throwable) throws Exception {
-                Log.i(TAG,throwable.toString());
+                Log.i(TAG, throwable.toString());
             }
         });
 
@@ -530,42 +530,66 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    private boolean tokenError = true;
+
+    /**
+     * 结论：
+     * 1.retryWhen所在的线程和订阅时所在的线程一致。
+     * 2.可以在retryWhen的observable中指定线程，判断是否重试,这里面指定的线程，这里指定的线程会成为下一个事件所在的线程。
+     * 3.subscribe和observer如果不在同一个线程，加入subscribe发出了error，那么observer中会有一部分消
+     * 息接收不到。
+     *
+     * @param view
+     */
     public void retryWhen(View view) {
         Observable.create(new ObservableOnSubscribe<Integer>() {
             @Override
             public void subscribe(ObservableEmitter<Integer> e) throws Exception {
-                e.onNext(1);
-                e.onNext(2);
-                e.onNext(3);
+//                e.onNext(1);
+//                e.onNext(2);
+//                e.onNext(3);
 //                e.onComplete();
 //                e.onError(new Exception("123"));
-                throw new Exception("error");
+                if (tokenError) {
+                    throw new Exception("error");
+                }else{
+                    e.onNext(1111);
+                }
             }
         })
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(Schedulers.newThread())
-//                .retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
-//                    @Override
-//                    public ObservableSource<?> apply(Observable<Throwable> throwableObservable) throws Exception {
-//                        //为什么这么返回，会进行重试呢？
-////                return throwableObservable;
-//                        //目前只能是这种形式
-//                        return throwableObservable
-//                                .observeOn(AndroidSchedulers.mainThread())
-//                                .flatMap(new Function<Throwable, ObservableSource<?>>() {
-//                            @Override
-//                            public ObservableSource<?> apply(Throwable throwable) throws Exception {
-//
-//                                Log.i(TAG, "retryWhen  " + Thread.currentThread().getName());
-//                                //返回error、complete表示不重试，其他任何值表示重试
-////                                return Observable.error(throwable);
-////                                return Observable.just(true);
-//                                //设置闹钟，每个指定时间，进行重试
-//                                return Observable.timer(10000, TimeUnit.MILLISECONDS);
-//                            }
-//                        });
-//                    }
-//                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .retryWhen(new Function<Observable<Throwable>, ObservableSource<?>>() {
+                    @Override
+                    public ObservableSource<?> apply(Observable<Throwable> throwableObservable) throws Exception {
+                        //为什么这么返回，会进行重试呢？
+//                return throwableObservable;
+                        //目前只能是这种形式
+                        Log.i(TAG, "retryWhen first " + Thread.currentThread().getName());
+
+                        return throwableObservable
+                                .observeOn(Schedulers.io())
+                                .flatMap(new Function<Throwable, ObservableSource<?>>() {
+                                    @Override
+                                    public ObservableSource<?> apply(Throwable throwable) throws Exception {
+
+                                        Log.i(TAG, "retryWhen  " + Thread.currentThread().getName());
+                                        //返回error、complete表示不重试，其他任何值表示重试
+//                                return Observable.error(throwable);
+//                                return Observable.just(true);
+                                        //设置闹钟，每个指定时间，进行重试
+//                                        return Observable.timer(3000, TimeUnit.MILLISECONDS);
+                                        if(throwable.getMessage().equals("error")){
+                                            Log.i(TAG,"处理异常，处理成功之后进行重试");
+                                            tokenError = false;
+                                            return Observable.just(true);
+                                        }else{
+                                            return Observable.error(throwable);
+                                        }
+                                    }
+                                });
+                    }
+                })
 //                .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Observer<Integer>() {
                     @Override
