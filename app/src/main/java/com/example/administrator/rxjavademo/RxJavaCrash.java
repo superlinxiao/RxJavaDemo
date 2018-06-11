@@ -5,34 +5,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
-import io.reactivex.FlowableEmitter;
-import io.reactivex.FlowableOnSubscribe;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
-import io.reactivex.ObservableSource;
-import io.reactivex.Observer;
-import io.reactivex.Scheduler;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
-import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Consumer;
-import io.reactivex.functions.Function;
 import io.reactivex.plugins.RxJavaPlugins;
 import io.reactivex.schedulers.Schedulers;
 
