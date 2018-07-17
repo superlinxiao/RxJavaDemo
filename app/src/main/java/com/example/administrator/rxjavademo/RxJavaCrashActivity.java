@@ -17,7 +17,7 @@ import io.reactivex.schedulers.Schedulers;
 /**
  * 解决rxJava在取消订阅后，上游线程发生崩溃后,下游无法捕获导致的崩溃
  */
-public class RxJavaCrash extends AppCompatActivity implements View.OnClickListener {
+public class RxJavaCrashActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = "RxJavaCrash";
     private Disposable mSubscribe;
