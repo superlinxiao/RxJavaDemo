@@ -1,0 +1,6 @@
+.gradle/
+.idea/
+RxJavaDemo.iml
+local.properties
+app/build/
+gradle/

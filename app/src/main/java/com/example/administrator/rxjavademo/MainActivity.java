@@ -5,8 +5,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -30,6 +28,8 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -47,6 +47,11 @@ public class MainActivity extends AppCompatActivity {
      * RxJava的基础调用方式，这里的监听者使用Observer
      */
     public void commonEmitter_observer(View view) {
+
+        String productType = DeviceUtil.getProductType();
+        Log.e(TAG, "productType:"+productType);
+
+
         Observable.create(new ObservableOnSubscribe<Integer>() {
             @Override
             public void subscribe(ObservableEmitter<Integer> e) throws Exception {
@@ -75,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onNext(Integer value) {
                         Log.e(TAG, "onNext: " + value);
-                        int a = 2 / 0;
+//                        int a = 2 / 0;
                         if (value == 2) {
                             disposable.dispose();
                         }
