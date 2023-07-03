@@ -1,6 +1,7 @@
 package com.example.administrator.rxjavademo;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -28,6 +29,7 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
@@ -49,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     public void commonEmitter_observer(View view) {
 
         String productType = DeviceUtil.getProductType();
-        Log.e(TAG, "productType:"+productType);
+        Log.e(TAG, "productType:" + productType);
 
 
         Observable.create(new ObservableOnSubscribe<Integer>() {
@@ -722,5 +724,148 @@ public class MainActivity extends AppCompatActivity {
         if (mIntervalDisposable != null) {
             mIntervalDisposable.dispose();
         }
+    }
+
+
+    /**
+     * 1、如果observable1和observable2设置了运行线程，不会被merge覆盖，如果没有设置，会被merge指定的运行线程覆盖
+     *
+     * <p>
+     * 2、observable1、observable2如果是正常结束，那么需要调用onComplete后，merge才会收到onComplete方法
+     * 3、
+     * observable1、observable2如果有一个抛出了异常，并且没有在自己的observable中catch这个异常，那么merge会在onError中结束,并只收到一次error.
+     * 如果在自己的observable中catch住了异常，那么不会影响另外一个observable。
+     * <p>
+     * 4、onSubscribe的线程，不受subscribeOn和observeOn线程的影响，他会在当前订阅线程执行
+     * 5、
+     */
+    public void merge_test(View view) {
+        Observable<Integer> observable1 = Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                Log.e(TAG, " 发送处onSubscribe  11111" + Thread.currentThread().getName());
+                e.onNext(1);
+                e.onNext(2);
+                e.onNext(3);
+//                Thread.sleep(1000);
+//                e.onError(null);
+                throw new Exception("error111");
+
+//                e.onComplete();
+            }
+        });
+        Observable<Integer> observable2 = Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                Log.e(TAG, " 发送处onSubscribe2222  " + Thread.currentThread().getName());
+                e.onNext(4);
+                e.onNext(5);
+//                Thread.sleep(2000);
+                e.onNext(6);
+                throw new Exception("error222");
+//                e.onComplete();
+            }
+        });
+        Observable.merge(observable2, observable1)
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .observeOn(Schedulers.io())
+                .subscribe(new Observer<Integer>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+//                        new Handler().postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                d.dispose();
+//                            }
+//                        }, 3000);
+                        //订阅发起的线程，不受subscribeOn和observeOn影响
+                        Log.i(TAG, " 收到onSubscribe merge  " + Thread.currentThread().getName());
+
+                    }
+
+                    @Override
+                    public void onNext(Integer value) {
+                        Log.i(TAG, " 收到onSubscribe merge onNext  " + value + "  " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+//                        Log.i(TAG, e + " 收到error：  " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.i(TAG, "  收到 onComplete " + Thread.currentThread().getName());
+
+                    }
+                });
+    }
+
+    /**
+     * 5、如果subscribeOn和observeOn在不同的线程，当发送端发生异常后，会通过handler来发送消息到另外的线程
+     * 如果发送端发生了error，那么会取消已经发送并且还没有处理的数据
+     */
+    public void merge_test2(View view) {
+        Observable<Integer> observable1 = Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                Log.e(TAG, " 发送处onSubscribe  11111" + Thread.currentThread().getName());
+                e.onNext(1);
+                e.onNext(2);
+                e.onNext(3);
+//                Thread.sleep(1000);
+//                e.onError(null);
+                throw new Exception("error111");
+
+//                e.onComplete();
+            }
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .onErrorReturnItem(1000);
+        Observable<Integer> observable2 = Observable.create(new ObservableOnSubscribe<Integer>() {
+            @Override
+            public void subscribe(ObservableEmitter<Integer> e) throws Exception {
+                Log.e(TAG, " 发送处onSubscribe2222  " + Thread.currentThread().getName());
+                e.onNext(4);
+                e.onNext(5);
+//                Thread.sleep(2000);
+                e.onNext(6);
+                throw new Exception("error222");
+//                e.onComplete();
+            }
+        }).subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread()).onErrorReturnItem(100);
+        Observable.merge(observable2, observable1)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.newThread())
+                .subscribe(new Observer<Integer>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+//                        new Handler().postDelayed(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                d.dispose();
+//                            }
+//                        }, 3000);
+                        //订阅发起的线程，不受subscribeOn和observeOn影响
+                        Log.i(TAG, " 收到onSubscribe merge  " + Thread.currentThread().getName());
+
+                    }
+
+                    @Override
+                    public void onNext(Integer value) {
+                        Log.i(TAG, " 收到onSubscribe merge onNext  " + value + "  " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i(TAG, e + " 收到error：  " + Thread.currentThread().getName());
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.i(TAG, "  收到 onComplete " + Thread.currentThread().getName());
+
+                    }
+                });
     }
 }
