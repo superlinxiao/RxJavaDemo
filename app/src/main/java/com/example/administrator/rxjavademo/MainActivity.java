@@ -737,7 +737,7 @@ public class MainActivity extends AppCompatActivity {
      * 如果在自己的observable中catch住了异常，那么不会影响另外一个observable。
      * <p>
      * 4、onSubscribe的线程，不受subscribeOn和observeOn线程的影响，他会在当前订阅线程执行
-     * 5、
+     * 5、如果observable1中抛出了一场，并且没有捕获，同时在merge中有异常监听，merge可以捕获这个异常（不过在调试的过程中，好像有时候也捕获不到，先按照可以捕获来写代码）
      */
     public void merge_test(View view) {
         Observable<Integer> observable1 = Observable.create(new ObservableOnSubscribe<Integer>() {
